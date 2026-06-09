@@ -1,36 +1,19 @@
 {
   "expo": {
-    "name": "NutriApp",
-    "slug": "nutriapp",
+    "name": "Healthbar",
+    "slug": "Healthbar",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#22C55E"
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "icon": "./assets/images/icon.png",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.nutriapp.mobile"
+      "bundleIdentifier": "com.healthbar.app"
     },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#22C55E"
-      },
-      "package": "com.nutriapp.mobile"
-    },
-    "scheme": "nutriapp",
+    "scheme": "healthbar",
     "plugins": [
       "expo-router",
       "expo-asset"
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+    ]
   }
 }

@@ -1,11 +1,22 @@
-import { Redirect } from 'expo-router';
-import { useUserStore } from '../store/userStore';
+import { View, Text, StyleSheet } from 'react-native';
 
-/**
- * Root index — redirects immediately based on auth state.
- * Expo Router renders this first before the layout effect fires.
- */
-export default function Index() {
-  const isAuthenticated = useUserStore((s) => s.isAuthenticated());
-  return <Redirect href={isAuthenticated ? '/(tabs)/dashboard' : '/login'} />;
+export default function HomeScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.text}>Healthbar</Text>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  text: {
+    fontSize: 24,
+    fontWeight: '600',
+  },
+});
