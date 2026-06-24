@@ -5,7 +5,6 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "icon": "./assets/images/icon.png",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.healthbar.app"
@@ -13,7 +12,11 @@
     "scheme": "healthbar",
     "plugins": [
       "expo-router",
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser",
+      "expo-dev-client",
+      "expo-image-picker",
+      ["@stripe/stripe-react-native", { "merchantIdentifier": "merchant.com.healthbar.app" }]
     ]
   }
 }

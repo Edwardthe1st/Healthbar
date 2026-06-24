@@ -10,24 +10,21 @@ import {
   SmallChevronRight,
   SmallPlusIcon,
 } from '@/components/icons/Icons';
-import { DIARY_MEALS } from '@/constants/data';
-
-const MEAL_KCALS: Record<string, number> = {
-  Breakfast: 320,
-  Lunch: 480,
-  Snack: 360,
-  Dinner: 0,
+const EMPTY_MEALS: Record<string, { name: string; serving: string; protein: number; kcal: number }[]> = {
+  Breakfast: [],
+  Lunch: [],
+  Snack: [],
+  Dinner: [],
 };
-
-const TOTAL_EATEN = 1160;
-const MACROS = { protein: 84, carbs: 142, fat: 38 };
 
 export default function DiaryScreen() {
   const router = useRouter();
   const { state } = useApp();
 
   const goal = state.calorieGoal;
-  const percent = Math.round((TOTAL_EATEN / goal) * 100);
+  const totalEaten = 0;
+  const macros = { protein: 0, carbs: 0, fat: 0 };
+  const percent = Math.round((totalEaten / goal) * 100);
 
   return (
     <View style={styles.container}>
@@ -59,20 +56,20 @@ export default function DiaryScreen() {
           <View style={styles.summaryTop}>
             <Text style={styles.summaryLabel}>Eaten today</Text>
             <Text style={styles.summaryKcal}>
-              {TOTAL_EATEN.toLocaleString()} / {goal.toLocaleString()} kcal
+              {totalEaten.toLocaleString()} / {goal.toLocaleString()} kcal
             </Text>
           </View>
           <ProgressBar percent={percent} height={12} />
           <Text style={styles.macroRow}>
-            P {MACROS.protein}g    C {MACROS.carbs}g    F {MACROS.fat}g
+            P {macros.protein}g    C {macros.carbs}g    F {macros.fat}g
           </Text>
         </View>
 
         {/* Meal sections */}
-        {(Object.keys(DIARY_MEALS) as (keyof typeof DIARY_MEALS)[]).map(
+        {(Object.keys(EMPTY_MEALS) as (keyof typeof EMPTY_MEALS)[]).map(
           (meal) => {
-            const items = DIARY_MEALS[meal];
-            const mealKcal = MEAL_KCALS[meal];
+            const items = EMPTY_MEALS[meal];
+            const mealKcal = 0;
 
             return (
               <View key={meal} style={styles.mealSection}>

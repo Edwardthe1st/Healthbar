@@ -3,6 +3,14 @@ export interface Profile {
   username: string;
   email: string;
   phone: string;
+  avatarUri?: string;
+}
+
+export interface PrivacySettings {
+  profileVisibility: 'everyone' | 'friends' | 'only_me';
+  shareNutritionalData: boolean;
+  shareBodyData: boolean;
+  dataResaleOptOut: boolean;
 }
 
 export interface Macros {
@@ -34,9 +42,12 @@ export interface CoachMessage {
   text: string;
 }
 
+export type SubscriptionTier = 'free' | 'no_ads' | 'plus';
+
 export interface AppState {
   profile: Profile;
   draft: Profile;
+  privacy: PrivacySettings;
 
   calorieGoal: number;
   macros: Macros;
@@ -69,6 +80,7 @@ export interface AppState {
   authPhone: string;
 
   showDelete: boolean;
+  subscription: SubscriptionTier;
 }
 
 export type AppAction =
@@ -99,4 +111,9 @@ export type AppAction =
   | { type: 'SET_AUTH_MODE'; payload: 'choose' | 'email' | 'signup' }
   | { type: 'SET_AUTH_FIELD'; payload: { field: string; value: string } }
   | { type: 'RESET_AUTH' }
-  | { type: 'SET_SHOW_DELETE'; payload: boolean };
+  | { type: 'SET_SHOW_DELETE'; payload: boolean }
+  | { type: 'SYNC_PROFILE'; payload: Profile }
+  | { type: 'SET_AVATAR_URI'; payload: string }
+  | { type: 'SET_PRIVACY'; payload: Partial<PrivacySettings> }
+  | { type: 'SYNC_PRIVACY'; payload: PrivacySettings }
+  | { type: 'SET_SUBSCRIPTION'; payload: SubscriptionTier };

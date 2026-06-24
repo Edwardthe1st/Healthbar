@@ -4,17 +4,15 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '@/hooks/useApp';
 import { Colors, Shadows } from '@/constants/theme';
-import { getInitials } from '@/utils/helpers';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { ArrowRightIcon } from '@/components/icons/Icons';
-import { TODAY_MEALS } from '@/constants/data';
+import { Avatar } from '@/components/ui/Avatar';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { state } = useApp();
   const name = state.profile.name;
   const firstName = name.split(' ')[0];
-  const initials = getInitials(name);
   const calorieGoal = state.calorieGoal;
 
   return (
@@ -28,11 +26,10 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <Text style={styles.greeting}>Good morning, {firstName}</Text>
           <TouchableOpacity
-            style={styles.avatar}
             onPress={() => router.push('/account')}
             activeOpacity={0.7}
           >
-            <Text style={styles.avatarText}>{initials}</Text>
+            <Avatar size={42} name={name} avatarUri={state.profile.avatarUri} />
           </TouchableOpacity>
         </View>
 
@@ -42,11 +39,11 @@ export default function HomeScreen() {
             <Text style={styles.heroLabel}>Calories left</Text>
             <Text style={styles.heroGoal}>Goal {calorieGoal.toLocaleString()}</Text>
           </View>
-          <Text style={styles.heroBigNumber}>1,240 kcal</Text>
-          <ProgressBar percent={52} height={16} />
+          <Text style={styles.heroBigNumber}>{calorieGoal.toLocaleString()} kcal</Text>
+          <ProgressBar percent={0} height={16} />
           <View style={styles.heroFooterRow}>
-            <Text style={styles.heroFooterText}>1,160 eaten</Text>
-            <Text style={styles.heroFooterText}>+220 exercise</Text>
+            <Text style={styles.heroFooterText}>0 eaten</Text>
+            <Text style={styles.heroFooterText}>+0 exercise</Text>
           </View>
         </View>
 
@@ -54,18 +51,18 @@ export default function HomeScreen() {
         <View style={styles.macroRow}>
           <View style={[styles.macroCard, Shadows.card]}>
             <Text style={styles.macroLabel}>Protein</Text>
-            <Text style={styles.macroValue}>84/120g</Text>
-            <ProgressBar percent={70} height={6} />
+            <Text style={styles.macroValue}>0/{state.macros.protein}g</Text>
+            <ProgressBar percent={0} height={6} />
           </View>
           <View style={[styles.macroCard, Shadows.card]}>
             <Text style={styles.macroLabel}>Carbs</Text>
-            <Text style={styles.macroValue}>142/240g</Text>
-            <ProgressBar percent={59} height={6} />
+            <Text style={styles.macroValue}>0/{state.macros.carbs}g</Text>
+            <ProgressBar percent={0} height={6} />
           </View>
           <View style={[styles.macroCard, Shadows.card]}>
             <Text style={styles.macroLabel}>Fat</Text>
-            <Text style={styles.macroValue}>38/70g</Text>
-            <ProgressBar percent={54} height={6} />
+            <Text style={styles.macroValue}>0/{state.macros.fat}g</Text>
+            <ProgressBar percent={0} height={6} />
           </View>
         </View>
 
@@ -79,30 +76,7 @@ export default function HomeScreen() {
 
         {/* Today list card */}
         <View style={[styles.todayCard, Shadows.card]}>
-          {TODAY_MEALS.map((item, index) => (
-            <View
-              key={item.name}
-              style={[
-                styles.foodRow,
-                index < TODAY_MEALS.length - 1 && styles.foodRowBorder,
-              ]}
-            >
-              {/* Striped thumbnail placeholder */}
-              <View style={styles.thumbnail}>
-                <View style={[styles.stripe, { top: 8 }]} />
-                <View style={[styles.stripe, { top: 16 }]} />
-                <View style={[styles.stripe, { top: 24 }]} />
-                <View style={[styles.stripe, { top: 32 }]} />
-              </View>
-              <View style={styles.foodInfo}>
-                <Text style={styles.foodName}>{item.name}</Text>
-                <Text style={styles.foodMeta}>
-                  {item.meal} &middot; {item.protein}g protein
-                </Text>
-              </View>
-              <Text style={styles.foodKcal}>{item.kcal}</Text>
-            </View>
-          ))}
+          <Text style={styles.emptyText}>Nothing logged yet</Text>
         </View>
 
         {/* Coach teaser */}
@@ -160,20 +134,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.46,
     color: Colors.ink,
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(46,140,158,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.accent,
-  },
-
   /* Hero card */
   heroCard: {
     backgroundColor: Colors.card,
@@ -271,6 +231,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginHorizontal: 16,
     marginBottom: 16,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.muted,
+    textAlign: 'center',
+    paddingVertical: 24,
   },
   foodRow: {
     flexDirection: 'row',

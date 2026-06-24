@@ -3,3 +3,4 @@
 /.expo/
 /node_modules/
 /.claude/
+.env

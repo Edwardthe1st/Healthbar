@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/hooks/useApp';
+import { useAuth } from '@/hooks/useAuth';
 import { Colors, Shadows } from '@/constants/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ForwardChevron, TrashIcon } from '@/components/icons/Icons';
@@ -9,15 +10,21 @@ import { ForwardChevron, TrashIcon } from '@/components/icons/Icons';
 export default function SettingsScreen() {
   const router = useRouter();
   const { state, dispatch } = useApp();
+  const { signOut } = useAuth();
+
+  const visibilityLabels: Record<string, string> = {
+    everyone: 'Everyone',
+    friends: 'Friends',
+    only_me: 'Only me',
+  };
 
   const privacyRows = [
-    { label: 'Confidentiality', value: 'Only me', color: '#2E8C9E' },
-    { label: 'Access & permissions', value: 'Camera, Health', color: '#6E2E9E' },
+    { label: 'Confidentiality', value: visibilityLabels[state.privacy.profileVisibility] || 'Only me', color: '#2E8C9E', route: '/confidentiality' },
+    { label: 'Access & permissions', value: 'Camera, Health', color: '#6E2E9E', route: '/permissions' },
   ];
 
   const paymentRows = [
-    { label: 'Payment methods', value: 'Visa •• 4242', color: '#2E9E6E' },
-    { label: 'Bank account (RIB)', value: 'FR76 •• 1234', color: '#9E6E2E' },
+    { label: 'Payment methods', value: 'Manage', color: '#2E9E6E', route: '/payment' },
   ];
 
   return (
@@ -28,28 +35,38 @@ export default function SettingsScreen() {
         <Text style={styles.sectionLabel}>Privacy & security</Text>
         <View style={[styles.card, Shadows.card]}>
           {privacyRows.map((row, i) => (
-            <View key={row.label} style={[styles.row, i < privacyRows.length - 1 && styles.rowBorder]}>
+            <TouchableOpacity
+              key={row.label}
+              style={[styles.row, i < privacyRows.length - 1 && styles.rowBorder]}
+              onPress={() => router.push(row.route as any)}
+              activeOpacity={0.7}
+            >
               <View style={[styles.iconTile, { backgroundColor: row.color }]}>
                 <View style={styles.iconDot} />
               </View>
               <Text style={styles.rowLabel}>{row.label}</Text>
               <Text style={styles.rowValue}>{row.value}</Text>
               <ForwardChevron />
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 
         <Text style={styles.sectionLabel}>Payment</Text>
         <View style={[styles.card, Shadows.card]}>
           {paymentRows.map((row, i) => (
-            <View key={row.label} style={[styles.row, i < paymentRows.length - 1 && styles.rowBorder]}>
+            <TouchableOpacity
+              key={row.label}
+              style={[styles.row, i < paymentRows.length - 1 && styles.rowBorder]}
+              onPress={() => router.push(row.route as any)}
+              activeOpacity={0.7}
+            >
               <View style={[styles.iconTile, { backgroundColor: row.color }]}>
                 <View style={styles.iconDot} />
               </View>
               <Text style={styles.rowLabel}>{row.label}</Text>
               <Text style={styles.rowValue}>{row.value}</Text>
               <ForwardChevron />
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 
@@ -90,7 +107,7 @@ export default function SettingsScreen() {
               style={styles.deleteBtn}
               onPress={() => {
                 dispatch({ type: 'SET_SHOW_DELETE', payload: false });
-                router.replace('/(auth)');
+                signOut();
               }}
               activeOpacity={0.8}
             >

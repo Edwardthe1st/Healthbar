@@ -47,3 +47,13 @@ export function connectedSummary(connected: Record<string, boolean>): string {
   if (on.length === 1) return on[0];
   return `${on.length} connected`;
 }
+
+export function formatIban(raw: string): string {
+  return raw.replace(/[^A-Z0-9]/gi, '').replace(/(.{4})/g, '$1 ').trim().toUpperCase();
+}
+
+export function maskIban(iban: string): string {
+  const clean = iban.replace(/\s/g, '');
+  if (clean.length < 8) return formatIban(clean);
+  return `${clean.slice(0, 4)} ${'•••• '.repeat(Math.max(0, Math.floor((clean.length - 8) / 4)))}${clean.slice(-4)}`;
+}

@@ -2,7 +2,15 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Colors, Shadows } from '@/constants/theme';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { INSIGHTS_BARS } from '@/constants/data';
+const EMPTY_BARS = [
+  { day: 'M', height: 0, kcal: 0 },
+  { day: 'T', height: 0, kcal: 0 },
+  { day: 'W', height: 0, kcal: 0 },
+  { day: 'T', height: 0, kcal: 0 },
+  { day: 'F', height: 0, kcal: 0 },
+  { day: 'S', height: 0, kcal: 0 },
+  { day: 'S', height: 0, kcal: 0, isToday: true },
+];
 
 export default function InsightsScreen() {
   return (
@@ -17,7 +25,7 @@ export default function InsightsScreen() {
       <View style={styles.chartCard}>
         <View style={styles.chartHeader}>
           <Text style={styles.chartTitle}>Calories</Text>
-          <Text style={styles.chartAvg}>avg 2,010 kcal</Text>
+          <Text style={styles.chartAvg}>avg 0 kcal</Text>
         </View>
 
         <View style={styles.chartArea}>
@@ -29,7 +37,7 @@ export default function InsightsScreen() {
 
           {/* Bars */}
           <View style={styles.barsRow}>
-            {INSIGHTS_BARS.map((bar, index) => (
+            {EMPTY_BARS.map((bar, index) => (
               <View key={index} style={styles.barWrapper}>
                 <View
                   style={[
@@ -49,7 +57,7 @@ export default function InsightsScreen() {
 
         {/* Day labels */}
         <View style={styles.dayLabelsRow}>
-          {INSIGHTS_BARS.map((bar, index) => (
+          {EMPTY_BARS.map((bar, index) => (
             <Text
               key={index}
               style={[
@@ -66,15 +74,15 @@ export default function InsightsScreen() {
       {/* Stat tiles */}
       <View style={styles.statsRow}>
         <View style={styles.statTile}>
-          <Text style={styles.statValue}>2,010</Text>
+          <Text style={styles.statValue}>0</Text>
           <Text style={styles.statLabel}>Avg kcal</Text>
         </View>
         <View style={styles.statTile}>
-          <Text style={styles.statValue}>96g</Text>
+          <Text style={styles.statValue}>0g</Text>
           <Text style={styles.statLabel}>Avg protein</Text>
         </View>
         <View style={styles.statTile}>
-          <Text style={[styles.statValue, { color: Colors.accent }]}>7</Text>
+          <Text style={[styles.statValue, { color: Colors.accent }]}>0</Text>
           <Text style={styles.statLabel}>Day streak</Text>
         </View>
       </View>
@@ -91,9 +99,9 @@ export default function InsightsScreen() {
           <View style={styles.macroRow}>
             <Text style={styles.macroLabel}>Protein</Text>
             <View style={styles.macroBarWrapper}>
-              <ProgressBar percent={80} height={8} fillColor={Colors.accent} />
+              <ProgressBar percent={0} height={8} fillColor={Colors.accent} />
             </View>
-            <Text style={styles.macroValue}>96 / 120g</Text>
+            <Text style={styles.macroValue}>0 / 120g</Text>
           </View>
 
           {/* Carbs */}
@@ -101,12 +109,12 @@ export default function InsightsScreen() {
             <Text style={styles.macroLabel}>Carbs</Text>
             <View style={styles.macroBarWrapper}>
               <ProgressBar
-                percent={82}
+                percent={0}
                 height={8}
                 fillColor="rgba(46,140,158,0.55)"
               />
             </View>
-            <Text style={styles.macroValue}>198 / 240g</Text>
+            <Text style={styles.macroValue}>0 / 240g</Text>
           </View>
 
           {/* Fat */}
@@ -114,12 +122,12 @@ export default function InsightsScreen() {
             <Text style={styles.macroLabel}>Fat</Text>
             <View style={styles.macroBarWrapper}>
               <ProgressBar
-                percent={91}
+                percent={0}
                 height={8}
                 fillColor="rgba(46,140,158,0.35)"
               />
             </View>
-            <Text style={styles.macroValue}>64 / 70g</Text>
+            <Text style={styles.macroValue}>0 / 70g</Text>
           </View>
         </View>
       </View>

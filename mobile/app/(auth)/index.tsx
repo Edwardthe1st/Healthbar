@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,17 +8,20 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '@/hooks/useApp';
+import { useAuth } from '@/hooks/useAuth';
 import { Colors, Shadows } from '@/constants/theme';
-import { AppleIcon, GoogleIcon, EmailIcon } from '@/components/icons/Icons';
+import { GoogleIcon, EmailIcon } from '@/components/icons/Icons';
 
 export default function AuthScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, dispatch } = useApp();
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const {
     authMode,
     authEmail,
@@ -44,14 +47,38 @@ export default function AuthScreen() {
     ? 'Start tracking in under a minute.'
     : 'Sign in to pick up where you left off.';
 
-  const handleSubmit = () => {
-    dispatch({ type: 'RESET_AUTH' });
-    router.replace('/(tabs)');
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setAuthError(null);
+    setIsSubmitting(true);
+    try {
+      const result = isSignup
+        ? await signUpWithEmail(authEmail.trim(), authPassword)
+        : await signInWithEmail(authEmail.trim(), authPassword);
+      if (result.error) {
+        setAuthError(result.error);
+      } else {
+        dispatch({ type: 'RESET_AUTH' });
+      }
+    } catch (e: any) {
+      setAuthError(e.message ?? 'An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSocial = () => {
-    dispatch({ type: 'RESET_AUTH' });
-    router.replace('/(tabs)');
+  const handleGoogle = async () => {
+    if (isSubmitting) return;
+    setAuthError(null);
+    setIsSubmitting(true);
+    try {
+      await signInWithGoogle();
+      dispatch({ type: 'RESET_AUTH' });
+    } catch (e: any) {
+      setAuthError(e.message ?? 'Google sign-in failed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const setField = (field: string, value: string) => {
@@ -81,24 +108,26 @@ export default function AuthScreen() {
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
 
+        {/* Error banner */}
+        {authError && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{authError}</Text>
+          </View>
+        )}
+
+        {/* Loading indicator */}
+        {isSubmitting && (
+          <ActivityIndicator size="small" color={Colors.accent} style={{ marginBottom: 8 }} />
+        )}
+
         {/* CHOOSE mode */}
         {isChoose && (
           <View style={styles.formGroup}>
-            {/* Apple */}
-            <TouchableOpacity
-              style={styles.appleButton}
-              activeOpacity={0.7}
-              onPress={handleSocial}
-            >
-              <AppleIcon />
-              <Text style={styles.appleButtonText}>Continue with Apple</Text>
-            </TouchableOpacity>
-
             {/* Google */}
             <TouchableOpacity
               style={[styles.googleButton, Shadows.cardSmall]}
               activeOpacity={0.7}
-              onPress={handleSocial}
+              onPress={handleGoogle}
             >
               <GoogleIcon />
               <Text style={styles.googleButtonText}>Continue with Google</Text>
@@ -169,8 +198,8 @@ export default function AuthScreen() {
                   ? [styles.primaryActive, Shadows.button]
                   : styles.primaryDisabled,
               ]}
-              activeOpacity={emailCanSubmit ? 0.7 : 1}
-              onPress={emailCanSubmit ? handleSubmit : undefined}
+              activeOpacity={emailCanSubmit && !isSubmitting ? 0.7 : 1}
+              onPress={emailCanSubmit && !isSubmitting ? handleSubmit : undefined}
             >
               <Text
                 style={[
@@ -178,7 +207,7 @@ export default function AuthScreen() {
                   !emailCanSubmit && styles.primaryButtonTextDisabled,
                 ]}
               >
-                Sign in
+                {isSubmitting ? 'Signing in...' : 'Sign in'}
               </Text>
             </TouchableOpacity>
 
@@ -309,8 +338,8 @@ export default function AuthScreen() {
                   ? [styles.primaryActive, Shadows.button]
                   : styles.primaryDisabled,
               ]}
-              activeOpacity={signupCanSubmit ? 0.7 : 1}
-              onPress={signupCanSubmit ? handleSubmit : undefined}
+              activeOpacity={signupCanSubmit && !isSubmitting ? 0.7 : 1}
+              onPress={signupCanSubmit && !isSubmitting ? handleSubmit : undefined}
             >
               <Text
                 style={[
@@ -318,7 +347,7 @@ export default function AuthScreen() {
                   !signupCanSubmit && styles.primaryButtonTextDisabled,
                 ]}
               >
-                Create account
+                {isSubmitting ? 'Creating account...' : 'Create account'}
               </Text>
             </TouchableOpacity>
 
@@ -402,26 +431,26 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
+  // Error banner
+  errorBanner: {
+    backgroundColor: 'rgba(200,72,60,0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 13.5,
+    fontWeight: '500',
+    color: '#C8483C',
+    textAlign: 'center',
+  },
+
   // Form group
   formGroup: {
     gap: 11,
   },
 
   // Social buttons
-  appleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#000',
-    borderRadius: 15,
-    padding: 15,
-  },
-  appleButtonText: {
-    color: '#fff',
-    fontSize: 15.5,
-    fontWeight: '600',
-  },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -14,6 +14,7 @@ import { Colors, Shadows } from '@/constants/theme';
 import { SendIcon, BackChevron } from '@/components/icons/Icons';
 import { COACH_SUGGESTIONS } from '@/constants/data';
 import { coachFallback } from '@/utils/helpers';
+import { chatWithOllama } from '@/utils/ollama';
 
 /* ── tiny avatar bars (reusable) ─────────────────────────────── */
 
@@ -145,13 +146,17 @@ export default function CoachScreen() {
   }, [messages, typing]);
 
   /* send handler */
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || typing) return;
     dispatch({ type: 'SEND_MESSAGE', payload: trimmed });
-    setTimeout(() => {
+
+    try {
+      const reply = await chatWithOllama(trimmed, messages);
+      dispatch({ type: 'ADD_BOT_MESSAGE', payload: reply });
+    } catch {
       dispatch({ type: 'ADD_BOT_MESSAGE', payload: coachFallback(trimmed) });
-    }, 1500);
+    }
   };
 
   const canSend = coachInput.trim().length > 0 && !typing;

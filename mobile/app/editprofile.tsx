@@ -1,10 +1,14 @@
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '@/hooks/useApp';
 import { Colors, Shadows } from '@/constants/theme';
 import { CameraIcon } from '@/components/icons/Icons';
-import { getInitials } from '@/utils/helpers';
+import { Avatar } from '@/components/ui/Avatar';
+import { supabase } from '@/services/supabase';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -13,6 +17,25 @@ export default function EditProfileScreen() {
   useEffect(() => {
     dispatch({ type: 'INIT_DRAFT' });
   }, []);
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please allow access to your photo library.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const src = result.assets[0].uri;
+    const dest = FileSystem.documentDirectory + `avatar_${Date.now()}.jpg`;
+    await FileSystem.copyAsync({ from: src, to: dest });
+    dispatch({ type: 'SET_AVATAR_URI', payload: dest });
+    await AsyncStorage.setItem('avatarUri', dest);
+  };
 
   const fields = [
     { label: 'Name', value: state.draft.name, field: 'name', placeholder: 'Full name', prefix: '' },
@@ -28,23 +51,47 @@ export default function EditProfileScreen() {
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit profile</Text>
-        <TouchableOpacity onPress={() => { dispatch({ type: 'SAVE_PROFILE' }); router.back(); }}>
+        <TouchableOpacity onPress={async () => {
+          dispatch({ type: 'SAVE_PROFILE' });
+          const nameParts = state.draft.name.split(' ');
+          const updates: Parameters<typeof supabase.auth.updateUser>[0] = {
+            data: {
+              firstName: nameParts[0] || '',
+              lastName: nameParts.slice(1).join(' ') || '',
+              username: state.draft.username,
+              phone: state.draft.phone,
+            },
+          };
+          if (state.draft.email !== state.profile.email) {
+            updates.email = state.draft.email;
+          }
+          const { error } = await supabase.auth.updateUser(updates);
+          if (error) {
+            Alert.alert('Error', error.message);
+            return;
+          }
+          if (state.draft.email !== state.profile.email) {
+            Alert.alert(
+              'Confirm your email',
+              'A confirmation link has been sent to your new email address. Please check your inbox.',
+            );
+          }
+          router.back();
+        }}>
           <Text style={styles.saveText}>Save</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll}>
-        <View style={styles.avatarBlock}>
+        <TouchableOpacity style={styles.avatarBlock} onPress={pickImage} activeOpacity={0.7}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(state.draft.name)}</Text>
-            </View>
+            <Avatar size={84} name={state.draft.name} avatarUri={state.draft.avatarUri} />
             <View style={styles.cameraBadge}>
               <CameraIcon size={15} />
             </View>
           </View>
           <Text style={styles.changePhoto}>Change photo</Text>
-        </View>
+        </TouchableOpacity>
 
         <Text style={styles.sectionLabel}>Profile info</Text>
         <View style={[styles.card, Shadows.card]}>
@@ -89,15 +136,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   avatarBlock: { alignItems: 'center', paddingTop: 16, paddingBottom: 8 },
   avatarContainer: { position: 'relative' },
-  avatar: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: 'rgba(46,140,158,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 29, fontWeight: '700', color: Colors.accent },
   cameraBadge: {
     position: 'absolute',
     right: -2,

@@ -2,13 +2,16 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/hooks/useApp';
+import { useAuth } from '@/hooks/useAuth';
 import { Colors, Shadows } from '@/constants/theme';
 import { BackChevron, SettingsIcon, ForwardChevron } from '@/components/icons/Icons';
-import { getInitials, formatNumber, dietSummary, connectedSummary } from '@/utils/helpers';
+import { formatNumber, dietSummary, connectedSummary } from '@/utils/helpers';
+import { Avatar } from '@/components/ui/Avatar';
 
 export default function AccountScreen() {
   const router = useRouter();
   const { state } = useApp();
+  const { signOut } = useAuth();
 
   const goalRows = [
     { label: 'Daily calorie goal', value: formatNumber(state.calorieGoal), color: '#2E8C9E', route: '/goal-calories' },
@@ -37,13 +40,29 @@ export default function AccountScreen() {
 
       <ScrollView style={styles.scroll}>
         <View style={styles.profileBlock}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(state.profile.name)}</Text>
-          </View>
+          <Avatar size={78} name={state.profile.name} avatarUri={state.profile.avatarUri} />
           <Text style={styles.profileName}>{state.profile.name}</Text>
           <Text style={styles.profileEmail}>{state.profile.email}</Text>
           <TouchableOpacity style={styles.editPill} onPress={() => router.push('/editprofile')} activeOpacity={0.7}>
             <Text style={styles.editPillText}>Edit profile</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionLabel}>Subscription</Text>
+        <View style={[styles.card, Shadows.card]}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push('/subscription' as any)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconTile, { backgroundColor: '#9E2E8C' }]}>
+              <View style={styles.iconDot} />
+            </View>
+            <Text style={styles.rowLabel}>Current plan</Text>
+            <Text style={styles.rowValue}>
+              {state.subscription === 'free' ? 'Free' : state.subscription === 'no_ads' ? 'Without Ads' : 'Plus'}
+            </Text>
+            <ForwardChevron />
           </TouchableOpacity>
         </View>
 
@@ -88,7 +107,7 @@ export default function AccountScreen() {
         <View style={[styles.card, Shadows.card, { marginTop: 22 }]}>
           <TouchableOpacity
             style={styles.signOutRow}
-            onPress={() => router.replace('/(auth)')}
+            onPress={() => signOut()}
             activeOpacity={0.7}
           >
             <Text style={styles.signOutText}>Sign out</Text>
@@ -133,15 +152,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 6,
   },
-  avatar: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    backgroundColor: 'rgba(46,140,158,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 27, fontWeight: '700', color: Colors.accent },
   profileName: {
     fontSize: 20,
     fontWeight: '700',

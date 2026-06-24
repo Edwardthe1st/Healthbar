@@ -1,16 +1,27 @@
-import React, { createContext, useReducer, type ReactNode } from 'react';
+import React, { createContext, useReducer, useEffect, type ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppAction } from './types';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/services/supabase';
 
 const defaultProfile = {
-  name: 'Alex Carter',
-  username: 'alexc',
-  email: 'alex.carter@email.com',
-  phone: '+33 6 12 34 56 78',
+  name: '',
+  username: '',
+  email: '',
+  phone: '',
+};
+
+const defaultPrivacy = {
+  profileVisibility: 'only_me' as const,
+  shareNutritionalData: false,
+  shareBodyData: false,
+  dataResaleOptOut: true,
 };
 
 export const initialState: AppState = {
   profile: { ...defaultProfile },
   draft: { ...defaultProfile },
+  privacy: { ...defaultPrivacy },
   calorieGoal: 2400,
   macros: { protein: 120, carbs: 240, fat: 70 },
   activity: 'Moderate',
@@ -20,32 +31,27 @@ export const initialState: AppState = {
     Pescatarian: false,
     Keto: false,
     'Gluten-free': false,
-    'Dairy-free': true,
+    'Dairy-free': false,
   },
   connected: {
-    'Apple Health': true,
+    'Apple Health': false,
     'Google Fit': false,
     Fitbit: false,
     Garmin: false,
   },
   reminders: { enabled: true, Breakfast: true, Lunch: true, Dinner: true, Water: false },
   units: { measure: 'Metric', energy: 'kcal' },
-  query: 'chicken',
-  meal: 'Lunch',
-  selected: { 1: true },
-  dishName: 'Bolognese pasta',
-  servings: 4,
-  dishItems: [
-    { id: 'pasta', qty: 2 },
-    { id: 'tomato', qty: 1 },
-    { id: 'beef', qty: 1 },
-    { id: 'parm', qty: 1 },
-  ],
+  query: '',
+  meal: 'Breakfast',
+  selected: {},
+  dishName: '',
+  servings: 1,
+  dishItems: [],
   showPicker: false,
   messages: [
     {
       role: 'bot',
-      text: "Hi Alex! I'm your Healthbar coach. Ask me anything about your meals, macros, or what to eat next.",
+      text: "Hi! I'm your Healthbar coach. Ask me anything about your meals, macros, or what to eat next.",
     },
   ],
   coachInput: '',
@@ -59,6 +65,7 @@ export const initialState: AppState = {
   authHeight: '',
   authPhone: '',
   showDelete: false,
+  subscription: 'free',
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -175,6 +182,22 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     case 'SET_SHOW_DELETE':
       return { ...state, showDelete: action.payload };
+    case 'SYNC_PROFILE': {
+      const p = action.payload;
+      return { ...state, profile: p, draft: p };
+    }
+    case 'SET_AVATAR_URI':
+      return {
+        ...state,
+        profile: { ...state.profile, avatarUri: action.payload },
+        draft: { ...state.draft, avatarUri: action.payload },
+      };
+    case 'SET_PRIVACY':
+      return { ...state, privacy: { ...state.privacy, ...action.payload } };
+    case 'SYNC_PRIVACY':
+      return { ...state, privacy: action.payload };
+    case 'SET_SUBSCRIPTION':
+      return { ...state, subscription: action.payload };
     default:
       return state;
   }
@@ -190,5 +213,47 @@ export const AppContext = createContext<{
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const { user } = useAuth();
+
+  // Load avatar from AsyncStorage on mount
+  useEffect(() => {
+    AsyncStorage.getItem('avatarUri').then((uri) => {
+      if (uri) dispatch({ type: 'SET_AVATAR_URI', payload: uri });
+    });
+  }, []);
+
+  // Persist avatar when it changes
+  useEffect(() => {
+    if (state.profile.avatarUri) {
+      AsyncStorage.setItem('avatarUri', state.profile.avatarUri);
+    }
+  }, [state.profile.avatarUri]);
+
+  useEffect(() => {
+    if (user) {
+      const meta = user.user_metadata ?? {};
+      const firstName = meta.firstName ?? meta.full_name?.split(' ')[0] ?? '';
+      const lastName = meta.lastName ?? meta.full_name?.split(' ').slice(1).join(' ') ?? '';
+      const fullName = `${firstName} ${lastName}`.trim();
+      dispatch({
+        type: 'SYNC_PROFILE',
+        payload: {
+          name: fullName || user.email?.split('@')[0] || '',
+          username: meta.username ?? user.email?.split('@')[0] ?? '',
+          email: user.email ?? '',
+          phone: meta.phone ?? '',
+        },
+      });
+
+      // Load privacy settings from user metadata
+      if (meta.privacy) {
+        dispatch({ type: 'SYNC_PRIVACY', payload: meta.privacy });
+      }
+
+      // Load subscription from user metadata
+      dispatch({ type: 'SET_SUBSCRIPTION', payload: meta.subscription ?? 'free' });
+    }
+  }, [user]);
+
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
 }
