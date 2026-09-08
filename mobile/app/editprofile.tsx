@@ -2,8 +2,8 @@ import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { File } from 'expo-file-system';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useApp } from '@/hooks/useApp';
 import { Colors, Shadows } from '@/constants/theme';
 import { CameraIcon } from '@/components/icons/Icons';
@@ -30,11 +30,48 @@ export default function EditProfileScreen() {
       quality: 0.8,
     });
     if (result.canceled || !result.assets[0]) return;
-    const src = result.assets[0].uri;
-    const dest = FileSystem.documentDirectory + `avatar_${Date.now()}.jpg`;
-    await FileSystem.copyAsync({ from: src, to: dest });
-    dispatch({ type: 'SET_AVATAR_URI', payload: dest });
-    await AsyncStorage.setItem('avatarUri', dest);
+
+    const manipulated = await manipulateAsync(
+      result.assets[0].uri,
+      [{ resize: { width: 256, height: 256 } }],
+      { compress: 0.6, format: SaveFormat.JPEG },
+    );
+
+    const file = new File(manipulated.uri);
+    const arrayBuffer = await file.arrayBuffer();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const filePath = `${user.id}/avatar.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, arrayBuffer, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      Alert.alert('Upload error', uploadError.message);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { avatarUrl: publicUrl },
+    });
+
+    if (updateError) {
+      Alert.alert('Error', updateError.message);
+      return;
+    }
+
+    dispatch({ type: 'SET_AVATAR_URI', payload: publicUrl });
   };
 
   const fields = [

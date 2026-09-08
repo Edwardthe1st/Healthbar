@@ -57,9 +57,8 @@ export interface AppState {
   reminders: Reminders;
   units: Units;
 
-  query: string;
   meal: string;
-  selected: Record<number, boolean>;
+  selected: Record<string, boolean>;
 
   dishName: string;
   servings: number;
@@ -81,13 +80,12 @@ export interface AppState {
 
   showDelete: boolean;
   subscription: SubscriptionTier;
+  pendingBarcode: string | null;
 }
 
 export type AppAction =
-  | { type: 'SET_QUERY'; payload: string }
   | { type: 'SET_MEAL'; payload: string }
-  | { type: 'TOGGLE_FOOD'; payload: number }
-  | { type: 'CLEAR_QUERY' }
+  | { type: 'TOGGLE_FOOD'; payload: string }
   | { type: 'SET_DISH_NAME'; payload: string }
   | { type: 'SET_SERVINGS'; payload: number }
   | { type: 'ADD_INGREDIENT'; payload: string }
@@ -116,4 +114,5 @@ export type AppAction =
   | { type: 'SET_AVATAR_URI'; payload: string }
   | { type: 'SET_PRIVACY'; payload: Partial<PrivacySettings> }
   | { type: 'SYNC_PRIVACY'; payload: PrivacySettings }
-  | { type: 'SET_SUBSCRIPTION'; payload: SubscriptionTier };
+  | { type: 'SET_SUBSCRIPTION'; payload: SubscriptionTier }
+  | { type: 'SET_PENDING_BARCODE'; payload: string | null };

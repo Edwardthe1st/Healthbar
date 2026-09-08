@@ -45,7 +45,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <AppProvider>
-        <StripeProvider publishableKey={STRIPE_KEY}>
+        <StripeProvider publishableKey={STRIPE_KEY} merchantIdentifier="merchant.com.healthbar.app">
         <StatusBar style="dark" />
         <AuthGate>
           <Stack screenOptions={{ headerShown: false }}>
@@ -53,6 +53,7 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)/index" options={{ animation: 'fade' }} />
             <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
             <Stack.Screen name="search" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="scanner" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
             <Stack.Screen name="create" />
             <Stack.Screen name="account" />
             <Stack.Screen name="editprofile" />

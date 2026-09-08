@@ -16,6 +16,7 @@
       "expo-web-browser",
       "expo-dev-client",
       "expo-image-picker",
+      "expo-camera",
       ["@stripe/stripe-react-native", { "merchantIdentifier": "merchant.com.healthbar.app" }]
     ]
   }

@@ -1,5 +1,4 @@
 import React, { createContext, useReducer, useEffect, type ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, AppAction } from './types';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/services/supabase';
@@ -41,7 +40,6 @@ export const initialState: AppState = {
   },
   reminders: { enabled: true, Breakfast: true, Lunch: true, Dinner: true, Water: false },
   units: { measure: 'Metric', energy: 'kcal' },
-  query: '',
   meal: 'Breakfast',
   selected: {},
   dishName: '',
@@ -66,14 +64,11 @@ export const initialState: AppState = {
   authPhone: '',
   showDelete: false,
   subscription: 'free',
+  pendingBarcode: null,
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'SET_QUERY':
-      return { ...state, query: action.payload };
-    case 'CLEAR_QUERY':
-      return { ...state, query: '' };
     case 'SET_MEAL':
       return { ...state, meal: action.payload };
     case 'TOGGLE_FOOD': {
@@ -198,6 +193,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, privacy: action.payload };
     case 'SET_SUBSCRIPTION':
       return { ...state, subscription: action.payload };
+    case 'SET_PENDING_BARCODE':
+      return { ...state, pendingBarcode: action.payload };
     default:
       return state;
   }
@@ -215,20 +212,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { user } = useAuth();
 
-  // Load avatar from AsyncStorage on mount
-  useEffect(() => {
-    AsyncStorage.getItem('avatarUri').then((uri) => {
-      if (uri) dispatch({ type: 'SET_AVATAR_URI', payload: uri });
-    });
-  }, []);
-
-  // Persist avatar when it changes
-  useEffect(() => {
-    if (state.profile.avatarUri) {
-      AsyncStorage.setItem('avatarUri', state.profile.avatarUri);
-    }
-  }, [state.profile.avatarUri]);
-
   useEffect(() => {
     if (user) {
       const meta = user.user_metadata ?? {};
@@ -244,6 +227,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           phone: meta.phone ?? '',
         },
       });
+
+      // Load avatar from user metadata
+      if (meta.avatarUrl) {
+        dispatch({ type: 'SET_AVATAR_URI', payload: meta.avatarUrl });
+      }
 
       // Load privacy settings from user metadata
       if (meta.privacy) {

@@ -1,12 +1,22 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useStripe } from '@stripe/stripe-react-native';
 import { useApp } from '@/hooks/useApp';
 import { Colors, Shadows } from '@/constants/theme';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { CheckIcon } from '@/components/icons/Icons';
 import { supabase } from '@/services/supabase';
 import type { SubscriptionTier } from '@/context/types';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+
+// Replace these with your actual Stripe Price IDs from the dashboard
+const PRICE_IDS: Record<Exclude<SubscriptionTier, 'free'>, string> = {
+  no_ads: 'price_1TlnErDEnwt5vv6biugcm0FD',
+  plus: 'price_1TlnFvDEnwt5vv6bmJZ9hcYm',
+};
 
 const PLANS: {
   tier: SubscriptionTier;
@@ -42,10 +52,117 @@ const PLANS: {
 export default function SubscriptionScreen() {
   const router = useRouter();
   const { state, dispatch } = useApp();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const [loading, setLoading] = useState(false);
 
   const handleSelect = async (tier: SubscriptionTier) => {
-    dispatch({ type: 'SET_SUBSCRIPTION', payload: tier });
-    await supabase.auth.updateUser({ data: { subscription: tier } });
+    if (tier === state.subscription) return;
+    if (loading) return;
+
+    setLoading(true);
+
+    try {
+      if (tier === 'free') {
+        // Cancel subscription
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          Alert.alert('Error', 'You must be logged in.');
+          return;
+        }
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/cancel-subscription`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+        });
+
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body.error ?? 'Failed to cancel subscription');
+        }
+
+        dispatch({ type: 'SET_SUBSCRIPTION', payload: 'free' });
+        Alert.alert('Subscription cancelled', 'Your subscription will end at the current billing period.');
+      } else {
+        // Subscribe to a paid plan
+        const priceId = PRICE_IDS[tier];
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          Alert.alert('Error', 'You must be logged in.');
+          return;
+        }
+
+        // 1. Create subscription on backend
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/create-subscription`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ priceId }),
+        });
+
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body.error ?? 'Failed to create subscription');
+        }
+
+        const { clientSecret, ephemeralKey, customerId } = await res.json();
+
+        // 2. Initialize Payment Sheet
+        const { error: initError } = await initPaymentSheet({
+          paymentIntentClientSecret: clientSecret,
+          customerEphemeralKeySecret: ephemeralKey,
+          customerId,
+          merchantDisplayName: 'Healthbar',
+          allowsDelayedPaymentMethods: false,
+        });
+
+        if (initError) {
+          throw new Error(initError.message);
+        }
+
+        // 3. Present Payment Sheet
+        const { error: presentError } = await presentPaymentSheet();
+
+        if (presentError) {
+          if (presentError.code === 'Canceled') {
+            // User dismissed the sheet, not an error
+            return;
+          }
+          throw new Error(presentError.message);
+        }
+
+        // 4. Payment succeeded — now create the actual subscription
+        const confirmRes = await fetch(`${SUPABASE_URL}/functions/v1/confirm-subscription`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ priceId }),
+        });
+
+        if (!confirmRes.ok) {
+          const confirmBody = await confirmRes.json();
+          throw new Error(confirmBody.error ?? 'Failed to activate subscription');
+        }
+
+        dispatch({ type: 'SET_SUBSCRIPTION', payload: tier });
+        Alert.alert('Success', `You are now subscribed to ${PLANS.find((p) => p.tier === tier)?.name}!`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong';
+      Alert.alert('Error', message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,6 +181,7 @@ export default function SubscriptionScreen() {
               ]}
               onPress={() => handleSelect(plan.tier)}
               activeOpacity={0.7}
+              disabled={loading}
             >
               <View style={styles.cardHeader}>
                 <View style={styles.titleRow}>
@@ -96,6 +214,11 @@ export default function SubscriptionScreen() {
         })}
         <View style={{ height: 30 }} />
       </ScrollView>
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={Colors.accent} />
+        </View>
+      )}
     </View>
   );
 }
@@ -181,5 +304,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: 'rgba(105,118,122,0.4)',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -1,37 +1,184 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, TouchableOpacity, ScrollView, TextInput,
+  StyleSheet, ActivityIndicator, Image,
+} from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useApp } from '@/hooks/useApp';
+import { useFoodSearch } from '@/hooks/useFoodSearch';
 import { Colors, Shadows } from '@/constants/theme';
 import { SearchIcon, BarcodeIcon, CloseIcon, CheckIcon, SmallPlusIcon } from '@/components/icons/Icons';
 import { FOODS } from '@/constants/data';
+import type { SearchFood } from '@/services/openfoodfacts';
 
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const;
 
 export default function SearchScreen() {
   const router = useRouter();
   const { state, dispatch } = useApp();
+  const { query, setQuery, results, isLoading, error, clearSearch, searchByBarcode } = useFoodSearch();
 
-  const query = state.query;
   const meal = state.meal;
-  const selected = state.selected;
 
-  const filtered = query
-    ? FOODS.filter((f) => f.name.toLowerCase().includes(query.toLowerCase()))
-    : FOODS;
+  // Local selection state: Map<id, { kcal }>
+  const [selected, setSelected] = useState<Map<string, { kcal: number }>>(new Map());
 
-  const selectedIds = Object.keys(selected).filter((k) => selected[Number(k)]);
-  const selectedCount = selectedIds.length;
-  const totalKcal = FOODS.filter((f) => selected[f.id]).reduce((sum, f) => sum + f.kcal, 0);
+  // Pick up barcode from scanner via shared context
+  const pendingBarcode = state.pendingBarcode;
+  useFocusEffect(useCallback(() => {
+    if (pendingBarcode) {
+      dispatch({ type: 'SET_PENDING_BARCODE', payload: null });
+      searchByBarcode(pendingBarcode);
+    }
+  }, [pendingBarcode, searchByBarcode, dispatch]));
+
+  const toggleItem = useCallback((id: string, kcal: number) => {
+    setSelected((prev) => {
+      const next = new Map(prev);
+      if (next.has(id)) next.delete(id);
+      else next.set(id, { kcal });
+      return next;
+    });
+  }, []);
+
+  const selectedCount = selected.size;
+  const totalKcal = Array.from(selected.values()).reduce((sum, v) => sum + v.kcal, 0);
+
+  // Determine what to show
+  const hasQuery = query.length >= 2;
+  const showRecent = !hasQuery;
+
+  const handleBarcode = () => {
+    router.push('/scanner');
+  };
+
+  // Render a food row (shared between recent and API results)
+  const renderFoodRow = (
+    id: string,
+    name: string,
+    subtitle: string,
+    kcal: number,
+    imageUrl: string | null,
+    index: number,
+  ) => {
+    const isSelected = selected.has(id);
+    return (
+      <React.Fragment key={id}>
+        {index > 0 && <View style={styles.divider} />}
+        <View style={styles.foodRow}>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.thumbnail} />
+          ) : (
+            <View style={styles.thumbnail} />
+          )}
+          <View style={styles.foodInfo}>
+            <Text style={styles.foodName} numberOfLines={1}>{name}</Text>
+            <Text style={styles.foodSubtitle}>{subtitle}</Text>
+          </View>
+          <View style={styles.kcalContainer}>
+            <Text style={styles.kcalValue}>{kcal}</Text>
+            <Text style={styles.kcalLabel}>kcal</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.toggleCircle, isSelected ? styles.toggleSelected : styles.toggleUnselected]}
+            onPress={() => toggleItem(id, kcal)}
+          >
+            {isSelected ? (
+              <CheckIcon size={14} color="#fff" />
+            ) : (
+              <SmallPlusIcon size={14} color={Colors.accent} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </React.Fragment>
+    );
+  };
+
+  // Build the results section
+  const renderResults = () => {
+    if (showRecent) {
+      return (
+        <>
+          <Text style={styles.sectionLabel}>Recent foods</Text>
+          <View style={styles.resultsCard}>
+            {FOODS.map((food, index) =>
+              renderFoodRow(
+                String(food.id),
+                food.name,
+                `${food.serving} · ${food.protein}g protein`,
+                food.kcal,
+                null,
+                index,
+              ),
+            )}
+          </View>
+        </>
+      );
+    }
+
+    if (isLoading) {
+      return (
+        <>
+          <Text style={styles.sectionLabel}>Searching...</Text>
+          <View style={styles.emptyCard}>
+            <ActivityIndicator size="small" color={Colors.accent} />
+            <Text style={[styles.emptySubtitle, { marginTop: 10 }]}>
+              Looking up foods...
+            </Text>
+          </View>
+        </>
+      );
+    }
+
+    if (error) {
+      return (
+        <>
+          <Text style={styles.sectionLabel}>Error</Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Something went wrong</Text>
+            <Text style={styles.emptySubtitle}>{error}</Text>
+          </View>
+        </>
+      );
+    }
+
+    if (results.length === 0) {
+      return (
+        <>
+          <Text style={styles.sectionLabel}>0 matches</Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>No foods match</Text>
+            <Text style={styles.emptySubtitle}>Try another name, or create it yourself.</Text>
+          </View>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Text style={styles.sectionLabel}>{results.length} matches</Text>
+        <View style={styles.resultsCard}>
+          {results.map((food: SearchFood, index: number) =>
+            renderFoodRow(
+              food.code,
+              food.brand ? `${food.name} — ${food.brand}` : food.name,
+              `${food.serving} · ${food.protein}g protein`,
+              food.kcal,
+              food.imageUrl,
+              index,
+            ),
+          )}
+        </View>
+      </>
+    );
+  };
 
   return (
     <View style={styles.screen}>
       {/* ── Top area ── */}
       <View style={styles.topArea}>
-        {/* Grabber */}
         <View style={styles.grabber} />
 
-        {/* Header row */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>Add food</Text>
           <TouchableOpacity onPress={() => router.back()}>
@@ -48,20 +195,17 @@ export default function SearchScreen() {
               placeholder="Search foods…"
               placeholderTextColor={Colors.placeholder}
               value={query}
-              onChangeText={(t) => dispatch({ type: 'SET_QUERY', payload: t })}
+              onChangeText={setQuery}
               autoCapitalize="none"
               autoCorrect={false}
             />
             {query.length > 0 && (
-              <TouchableOpacity
-                onPress={() => dispatch({ type: 'CLEAR_QUERY' })}
-                style={styles.clearButton}
-              >
+              <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
                 <CloseIcon size={8} />
               </TouchableOpacity>
             )}
           </View>
-          <TouchableOpacity style={styles.barcodeButton}>
+          <TouchableOpacity style={styles.barcodeButton} onPress={handleBarcode}>
             <BarcodeIcon size={22} color={Colors.accent} />
           </TouchableOpacity>
         </View>
@@ -87,60 +231,7 @@ export default function SearchScreen() {
 
       {/* ── Results ── */}
       <ScrollView style={styles.results} contentContainerStyle={styles.resultsContent} keyboardShouldPersistTaps="handled">
-        {/* Section label */}
-        <Text style={styles.sectionLabel}>
-          {query ? `${filtered.length} matches` : 'Recent foods'}
-        </Text>
-
-        {/* Results card */}
-        {filtered.length > 0 ? (
-          <View style={styles.resultsCard}>
-            {filtered.map((food, index) => {
-              const isSelected = !!selected[food.id];
-              return (
-                <React.Fragment key={food.id}>
-                  {index > 0 && <View style={styles.divider} />}
-                  <View style={styles.foodRow}>
-                    {/* Thumbnail placeholder */}
-                    <View style={styles.thumbnail} />
-
-                    {/* Name & subtitle */}
-                    <View style={styles.foodInfo}>
-                      <Text style={styles.foodName} numberOfLines={1}>{food.name}</Text>
-                      <Text style={styles.foodSubtitle}>
-                        {food.serving} · {food.protein}g protein
-                      </Text>
-                    </View>
-
-                    {/* Kcal */}
-                    <View style={styles.kcalContainer}>
-                      <Text style={styles.kcalValue}>{food.kcal}</Text>
-                      <Text style={styles.kcalLabel}>kcal</Text>
-                    </View>
-
-                    {/* Toggle circle */}
-                    <TouchableOpacity
-                      style={[styles.toggleCircle, isSelected ? styles.toggleSelected : styles.toggleUnselected]}
-                      onPress={() => dispatch({ type: 'TOGGLE_FOOD', payload: food.id })}
-                    >
-                      {isSelected ? (
-                        <CheckIcon size={14} color="#fff" />
-                      ) : (
-                        <SmallPlusIcon size={14} color={Colors.accent} />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </React.Fragment>
-              );
-            })}
-          </View>
-        ) : (
-          /* Empty state */
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No foods match</Text>
-            <Text style={styles.emptySubtitle}>Try another name, or create it yourself.</Text>
-          </View>
-        )}
+        {renderResults()}
 
         {/* Create custom food CTA */}
         <TouchableOpacity style={styles.createCta} onPress={() => router.push('/create')}>
