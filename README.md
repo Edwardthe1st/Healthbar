@@ -1,47 +1,100 @@
 # Healthbar
 
-Healthbar est une application mobile de suivi de santé centrée sur la nutrition, le suivi des calories et l'accompagnement personnalisé.
+A mobile calorie and nutrition tracking app, built with Expo and React Native.
 
-## Idée principale
+Work in progress. The interface is largely built out, authentication works, and the data layer is still partly mocked.
 
-L'objectif est de proposer une application simple à utiliser, complète et adaptée aux besoins de chaque utilisateur. Elle doit permettre de suivre son alimentation, créer ses propres repas, consulter des informations nutritionnelles et recevoir de l'aide via un assistant santé.
+<p align="center">
+  <img src=".assets/images/icon.png" width="120" alt="Healthbar icon">
+</p>
 
-## Fonctionnalités prévues
+---
 
-- Compteur de calories complet avec plusieurs métriques personnalisées selon le profil de l'utilisateur.
-- Liste de produits, plats, légumes, viandes et autres aliments.
-- Création de plats personnalisés avec calcul des calories et des métriques nutritionnelles.
-- Assistant de santé pour aider les utilisateurs à faire des choix alimentaires et à suivre leur programme.
-- Interface simple, claire et agréable à utiliser.
-- Plusieurs formules d'utilisation :
-  - Version gratuite : toutes les fonctionnalités principales avec publicités, et limitations sur l'assistant et la création de plats.
-  - Version sans publicité : toutes les fonctionnalités principales sans publicités, avec limitations sur l'assistant et la création de plats.
-  - Version pro : toutes les fonctionnalités sans publicités et sans limitations sur l'assistant et la création de plats.
+## What it does
 
-## Structure du projet
+**Daily tracking.** A home screen with calorie and macro rings, a food diary organised by meal, and an insights tab with weekly trends.
+
+**Food logging.** Search across a food list, or build a custom dish ingredient by ingredient with calories and macros computed as you go.
+
+**Coach.** A conversational nutrition assistant that answers questions about the day's intake and suggests what to eat next. It runs against a local Ollama instance, so nothing leaves the machine.
+
+**Accounts.** Email and password sign-up, Google sign-in, guided onboarding to set goals, and a full settings section covering profile, units, dietary preferences, reminders, permissions and privacy.
+
+**Subscription tiers.** Free, ad-free, and pro, with subscription and payment screens in place.
+
+---
+
+## Stack
+
+| Layer | Choice |
+| --- | --- |
+| Framework | Expo, React Native, TypeScript |
+| Navigation | Expo Router, file-based |
+| Auth and backend | Supabase, session persisted with AsyncStorage |
+| State | React Context, `AppContext` and `AuthContext` |
+| AI coach | Ollama, `llama3.2`, running locally |
+| Payments | Stripe React Native |
+
+---
+
+## Project layout
 
 ```txt
 mobile/
   app/
-    _layout.tsx   # Squelette global de l'application
-    index.tsx     # Page d'accueil / page de connexion
-  components/     # Composants d'interface réutilisables
-  utils/          # Fonctions utilitaires
-  hooks/          # Logique React réutilisable
-  services/       # Appels API, stockage et logique externe
+    (auth)/        Sign-in and sign-up
+    (tabs)/        Home, diary, insights, coach
+    *.tsx          Onboarding, settings, search, dish creation
+  components/ui/   Reusable interface pieces
+  context/         App and auth state
+  constants/       Theme tokens and food data
+  services/        Supabase client
+  utils/           Helpers and the Ollama client
+  ios/             Native iOS project
 ```
 
-## Lancer l'application
+---
 
-Depuis le dossier `mobile` :
+## Running it
+
+From the `mobile` directory:
 
 ```bash
 npm install
 npm start
 ```
 
-Pour lancer directement sur iOS :
+Or straight onto a device:
 
 ```bash
 npm run ios
+npm run android
 ```
+
+### Environment
+
+Create a `.env` in `mobile/`:
+
+```bash
+EXPO_PUBLIC_SUPABASE_URL=your_project_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+```
+
+### Coach
+
+The coach needs Ollama running locally on port 11434:
+
+```bash
+ollama pull llama3.2
+ollama serve
+```
+
+Without it, every other part of the app still works.
+
+---
+
+## Current limitations
+
+The food list is a static set in `constants/data.ts` rather than a real database, and the coach's system prompt still carries placeholder daily stats instead of reading live values from the app state. Both are the next things to wire up.
+
+Nutrition figures are approximate and the coach is a prototype. Not a substitute for advice from a dietitian or a doctor.
